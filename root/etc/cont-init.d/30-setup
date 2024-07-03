@@ -1,0 +1,74 @@
+#!/usr/bin/with-contenv sh
+
+. /app/omglol.sh
+
+# Load ZONE and SUBDOMAIN vars from Docker Swarm secrets, if available:
+if [ -f "$SUBDOMAIN_FILE" ]; then
+    SUBDOMAIN=$(cat $SUBDOMAIN_FILE)
+fi
+if [ -f "$ADDRESS_FILE" ]; then
+    ADDRESS=$(cat $ADDRESS_FILE)
+fi
+
+# Verify the $ADDRESS and $API_KEY env variables are valid
+statusCode=$(verifyToken)
+
+if [ "$statusCode" != "200" ]; then
+  echo "----------------------------------------------------------------"
+  echo "ERROR: Invalid OMG.lol Credentials - $statusCode"
+  echo "----------------------------------------------------------------"
+  echo "Make sure the API_KEY and ADDRESS are correct. You can"
+  echo "get your OMG.lol API Token here:"
+  echo "https://home.omg.lol/account#api-key"
+  echo
+  echo "----------------------------------------------------------------"
+  exit 1
+fi
+
+echo "OMG.lol Address: $ADDRESS"
+
+# Check we can get the current public ip address
+PublicIpAddress=$(getPublicIpAddress)
+
+if [ ! -z ${INTERFACE+x} ]; then
+  PublicIpAddress=$(getLocalIpAddress)
+fi
+
+if [ "$PublicIpAddress" == "" ]; then
+  echo "----------------------------------------------------------------"
+  if [ "$RRTYPE" == "AAAA" ]; then
+    echo "ERROR: Failed To Get Public IPv6 Address"
+    echo "----------------------------------------------------------------"
+    echo "You must be running Docker with IPv6 support enabled or this"
+    echo "container with host networking enabled."
+    echo
+    echo "Add '--net=host' to your docker run command or if using"
+    echo "docker-compose add 'network_mode: host' to this service."
+  else
+    echo "ERROR: Failed To Get Public IPv4 Address"
+  fi
+  echo "----------------------------------------------------------------"
+  exit 1
+fi
+
+# Get the ID of the dns record from the CloudFlare API
+DDNSDnsRecordName=$(getDnsRecordName)
+DDNSDnsRecordId=$(getDnsRecordId $DDNSDnsRecordName)
+
+# If the dns record does not exist, create it now.
+if [ "$DDNSDnsRecordId" == "null" ]; then
+  echo "DNS record for '$DDNSDnsRecordName' was not found for $ADDRESS. Creating now..."
+  DDNSDnsRecordId=$(createDnsRecord $DDNSDnsRecordName $PublicIpAddress)
+
+  if [ "$DDNSDnsRecordId" == "null" ]; then
+    echo "----------------------------------------------------------------"
+    echo "ERROR: Failed to create DNS record '$DDNSDnsRecordName'"
+    echo "----------------------------------------------------------------"
+    exit 1
+  fi
+
+fi
+
+echo "DNS Record: $DDNSDnsRecordName ($DDNSDnsRecordId)"
+echo "DDNS_RECORD_ID=\"$DDNSDnsRecordId\" DDNS_RECORD_NAME=\"$DDNSDnsRecordName\"" > /config/omglol.conf
+echo "$CRON	/etc/cont-init.d/50-ddns" > /var/spool/cron/crontabs/root

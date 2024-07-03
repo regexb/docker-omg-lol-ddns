@@ -1,6 +1,6 @@
 # Security Policies and Procedures
 
-This document outlines security procedures and general policies for the `docker-cloudflare-ddns` project.
+This document outlines security procedures and general policies for the `docker-omg-lol-ddns` project.
 
   * [Reporting a Bug](#reporting-a-bug)
   * [Disclosure Policy](#disclosure-policy)
@@ -8,8 +8,8 @@ This document outlines security procedures and general policies for the `docker-
 
 ## Reporting a Bug
 
-The `docker-cloudflare-ddns` team and community take all security bugs in `docker-cloudflare-ddns` 
-seriously. Thank you for improving the security of `docker-cloudflare-ddns`. We appreciate
+The `docker-omg-lol-ddns` team and community take all security bugs in `docker-omg-lol-ddns` 
+seriously. Thank you for improving the security of `docker-omg-lol-ddns`. We appreciate
 your efforts and responsible disclosure and will make every effort to acknowledge 
 your contributions.
 
